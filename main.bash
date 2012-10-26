@@ -18,7 +18,7 @@ opcao=$( dialog							\
 # Dependendo a opcao escolhida no menu acima este case
 # ira chamar o script especifico
 case $opcao in
-	"Usuario") ./user.bash;;
+	"Usuario") ./user.bash $opcao;;
 	"Backup")  ./backup.bash;;
 	"Servicos") ./servicos.bash;;
 esac
