@@ -38,7 +38,8 @@ menu(){
                 0 0 0                              \
                 Incluir "Incluir um novo usuario"  \
                 Excluir "Excluir um usuario"       \
-                Alterar "Alterar um usuario" )
+                Alterar "Alterar um usuario"       \
+		Voltar  "Voltar para menu anterior")
 }
 
 if [ "$opcao" = "" ] 
@@ -51,5 +52,6 @@ else
 		"Incluir") incluir;;
 		"Excluir") excluir;;
 		"Alterar") alterar;;
+		"Voltar" ) ./main.bash
 	esac
 fi
