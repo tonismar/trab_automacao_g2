@@ -13,6 +13,51 @@ then
 	exit 0
 fi
 
+#manipulacao do item backup mysql
+backup_menu(){
+
+	#verifica se o mysql esta rodando e, caso positivo, executa o backup	
+	bkp(){
+		is_running=`service mysql status | awk -F' ' '{ print $4 }'`
+		if [ -n "$is_running" ]
+		then
+			dialog --title "Aviso" --msgbox "Vou fazer o backup" 0 0
+			
+		else
+			dialog --title "Aviso" --msgbox "Nao vou fazer o backup" 0 0
+		fi
+	}
+
+	bkp_menu(){
+	
+		op_backup=$( dialog						\
+				--stdout				     	\
+				--title "Opcoes com backup Mysql"             	\
+				--menu  "Escolha uma opcao"                  	\
+				0 0 0 					     	\
+				DoBackup "Efetuar backup geral" 	     	\
+				Check    "Verificar integridade"        	\
+				DoCron   "Agendar um backup"                    \
+				Back     "Voltar")
+
+		if [ -n "$op_backup" ]
+		then
+			case $op_backup in
+				"DoBackup") bkp;;
+				"Check") dialog --title "Aviso" --msgbox "Checing" 0 0;;
+				"DoCron") dialog --title "Aviso" --msgbox "Schedleing" 0 0;;
+				"Back") main_menu;;
+			esac
+		else
+			main_menu
+		fi
+
+		backup_menu
+	}
+	
+	bkp_menu
+}
+
 # incluir usuario
 incluir(){
 	usuario=$( dialog --stdout --inputbox "Por favor, informe o nome do usuario:" 0 0 )
@@ -188,7 +233,7 @@ main_menu(){
 	
 	case $opcao in
 		"Usuario") user_menu;;
-		"Backup") ;; #AQUI DEVE CONTER A FUNCAO QUE CHAMA O MENU PARA TRATAR DO BACKUP MYSQL
+		"Backup")  backup_menu;; #AQUI DEVE CONTER A FUNCAO QUE CHAMA O MENU PARA TRATAR DO BACKUP MYSQL
 		"Servicos") ;; #AQUI DEVE CONTER A FUNCAO QUE CHAMA O MENU PARA LIDAR COM OS SERVICOS
 	esac
 
