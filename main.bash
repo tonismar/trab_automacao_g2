@@ -1,10 +1,17 @@
 #!/bin/bash
-###############################################
-#                                             #
-# Trabalho G2 - Sistema de Automacao          #
-# Grupo: Andre, Franciele, Jorge e Tonismar   #
-#                                             #
-###############################################
+##############################################################################
+#                                                                            #
+# Trabalho G2 - Sistema de Automacao                                         #
+#                                                                            #
+#                                                                            #
+# Para efetuar a rotina de backup no mysql e necessario a troca de chave SSH #
+# entre o computador local e o remoto para nao solicitar senha.              #
+#                                                                            #
+# 1- Maquina local execute: ssh-keygen -t rsa                                #
+# 2- scp ~/.ssh/id_rsa.pub usuario@maquina_remota /tmp/                      #
+# 3- Maquina remota execute: cat /tmp/id_rsa.pub >> ~/.ssh/authorized_keys   #
+#																			 #
+##############################################################################
 
 # verifica se o usuario e root
 if [ $UID -ne 0 ]
@@ -21,32 +28,103 @@ backup_menu(){
 		is_running=`service mysql status | awk -F' ' '{ print $4 }'`
 		if [ -n "$is_running" ]
 		then
-			dialog --title "Aviso" --msgbox "Vou fazer o backup" 0 0
+			dialog --stdout --title "AVISO!" --yesno "Efetuar o backup?" 0 0
+			if [ $? = 0 ]
+			then
+				senha=$( dialog --stdout --title 'Senha' --passwordbox 'Informe a senha' 0 0 )
+				if [ -n "$senha" ]
+				then
+					mysqldump -u root -p$senha -x -e -A > /root/backup_all_`date +%Y%m%d`.sql
+				fi
+				if [ $? = 0 ]
+				then
+					tmp=`date +%Y%m%d`
+					md5=`md5sum /root/backup_all_$tmp.sql | awk -F' ' '{ print $1 }'`
+					echo "backup|`date`|/root/backup_all_$tmp.sql|$md5" >> /root/backup.log
+					#dialog --title "Aviso" --msgbox "Backup efetuado com sucesso." 0 0
+					bkp_usuario=$( dialog --stdout --title "Usuario remoto" --inputbox "Informe o usuario remoto." 0 0)
+					bkp_host=$( dialog --stdout --title "Computador remoto" --inputbox "Informe o IP/Nome host computador remoto." 0 0 )
+					bkp_path=$( dialog --stdout --title "Caminho remoto" --inputbox "Informe o caminho no computador remoto." 0 0 )
+					if [ -n "$bkp_usuario" ] && [ -n "$bkp_host" ] && [ -n "$bkp_path" ]
+					then
+						scp /root/backup_all_`date +%Y%m%d`.sql $bkp_usuario@$bkp_host:$bkp_path > /dev/null
+						if [ $? = 0 ]
+						then
+							dialog --title "Aviso" --msgbox "Arquivo enviado com sucesso." 0 0
+						else
+							dialog --title "Erro" --msgbox "Erro ao enviar arquivo. $?" 0 0 
+						fi
+					else
+						dialog --title "Erro" --msgbox "Erro ao informar dados para copia. U:$bkp_usuario H:$bkp_host P:$bkp_path" 0 0 	
+					fi
+				else
+					dialog --title "Aviso" --msgbox "Erro ao efetuar o backup." 0 0
+				fi
+			fi
 			
 		else
-			dialog --title "Aviso" --msgbox "Nao vou fazer o backup" 0 0
+			dialog --title "Aviso" --msgbox "Servico mysqld nao esta rodando." 0 0
 		fi
 	}
 
+	bkp_schedule(){
+		#minuto hora dia-do-mes mes dia-da-semana comando
+		minuto=$( dialog --stdout --title 'Informe o minuto' --inputbox 'Minuto de agendamento' 0 0 )
+		hora=$( dialog --stdout --title 'Informe a hora.' --inputbox 'Hora de agendamento' 0 0 )
+		dia=$( dialog --stdout --title 'Informe o dia.' --inputbox 'Dia de agendamento' 0 0 )
+		mes=$( dialog --stdout --title 'Informe o mes.' --inputbox 'Mes de agendamento' 0 0 )
+		dow=$( dialog --stdout --title 'Informe o dia da semana.' --inputbox 'Dia da semana' 0 0 )
+		cmd="mysqldump -u root -proot -x -e -A > /root/backup_all_\`date \+\%Y\%m\%d\`.sql"
+		echo "$minuto $hora $dia $mes $dow $cmd" > /tmp/cron.root
+		crontab -u root /tmp/cron.root 2> /tmp/cron.error
+		if [ $? = 0 ]
+		then
+			dialog --title "Aviso" --msgbox "Comando agendado." 0 0
+		else
+			dialog --title "Aviso" --msgbox "Erro ao executar o agendamento." 0 0
+			dialog --title "Erro" --textbox /tmp/cron.error 0 0
+		fi
+	}
+
+	check_bkp(){
+		local_file=$( dialog --stdout --title "Arquivo local" --inputbox "Informe o arquivo (caminho completo) local." 0 70 )
+		remote_file=$( dialog --stdout --title "Arquivo remoto" --inputbox "Informe o arquivo (caminho completo) remoto." 0 70 )
+		check_user=$( dialog --stdout --title "Usuario remoto" --inputbox "Informe o usuario remoto." 0 0 )
+		check_host=$( dialog --stdout --title "Computador remoto" --inputbox "Informe o IP/Nome host computador remoto." 0 0 )
+		if [ -n "$check_user" ] && [ -n "$check_host" ] && [ -n "$remote_file" ]
+		then		
+			remote_md5=`ssh $check_user@$check_host "md5sum $remote_file" | awk -F' ' '{ print $1 }'`
+			local_md5=`md5sum $local_file | awk -F' ' '{ print $1 }'`
+			if [ "$remote_md5" = "$local_md5" ]
+			then
+				dialog --title "Aviso" --msgbox "Arquivo integros." 0 0 
+			else
+				dialog --title "Erro" --msgbox "Arquivos diferentes." 0 0 
+			fi
+		else
+			dialog --title "Erro" --msgbox "Erro ao envio dos dados." 0 0
+		fi
+	}			
+
 	bkp_menu(){
 	
-		op_backup=$( dialog						\
-				--stdout				     	\
-				--title "Opcoes com backup Mysql"             	\
-				--menu  "Escolha uma opcao"                  	\
-				0 0 0 					     	\
-				DoBackup "Efetuar backup geral" 	     	\
-				Check    "Verificar integridade"        	\
-				DoCron   "Agendar um backup"                    \
-				Back     "Voltar")
+		op_backup=$( dialog						 \
+				--stdout				     	 \
+				--title "Opcoes com backup Mysql"\
+				--menu  "Escolha uma opcao"      \
+				0 0 0 					     	 \
+				Backup "Efetuar backup geral"  \
+				Check    "Verificar integridade" \
+				Agendar  "Agendar um backup"     \
+				Voltar   "Voltar")
 
 		if [ -n "$op_backup" ]
 		then
 			case $op_backup in
-				"DoBackup") bkp;;
-				"Check") dialog --title "Aviso" --msgbox "Checing" 0 0;;
-				"DoCron") dialog --title "Aviso" --msgbox "Schedleing" 0 0;;
-				"Back") main_menu;;
+				"Backup") bkp;;
+				"Check") check_bkp;;
+				"Agendar") bkp_schedule;;
+				"Voltar") main_menu;;
 			esac
 		else
 			main_menu
@@ -272,4 +350,3 @@ user_menu(){
 
 main_menu
 
-exit 0
