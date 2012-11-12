@@ -34,11 +34,11 @@ backup_menu(){
 				senha=$( dialog --stdout --title 'Senha' --passwordbox 'Informe a senha' 0 0 )
 				if [ -n "$senha" ]
 				then
-					mysqldump -u root -p$senha -x -e -A > /root/backup_all_`date +%Y%m%d`.sql
+					mysqldump -u root -p$senha -x -e -A > /root/backup_all_`date +%Y%m%d%H%M`.sql
 				fi
 				if [ $? = 0 ]
 				then
-					tmp=`date +%Y%m%d`
+					tmp=`date +%Y%m%d%H%M`
 					md5=`md5sum /root/backup_all_$tmp.sql | awk -F' ' '{ print $1 }'`
 					echo "backup|`date`|/root/backup_all_$tmp.sql|$md5" >> /root/backup.log
 					#dialog --title "Aviso" --msgbox "Backup efetuado com sucesso." 0 0
@@ -47,15 +47,15 @@ backup_menu(){
 					bkp_path=$( dialog --stdout --title "Caminho remoto" --inputbox "Informe o caminho no computador remoto." 0 0 )
 					if [ -n "$bkp_usuario" ] && [ -n "$bkp_host" ] && [ -n "$bkp_path" ]
 					then
-						scp /root/backup_all_`date +%Y%m%d`.sql $bkp_usuario@$bkp_host:$bkp_path > /dev/null
+						scp /root/backup_all_`date +%Y%m%d%H%M`.sql $bkp_usuario@$bkp_host:$bkp_path > /dev/null
 						if [ $? = 0 ]
 						then
 							dialog --title "Aviso" --msgbox "Arquivo enviado com sucesso." 0 0
 						else
-							dialog --title "Erro" --msgbox "Erro ao enviar arquivo. $?" 0 0 
+							dialog --title "Erro" --msgbox "Erro ao enviar arquivo. $bkp_usuario $bkp_host $bkp_path" 0 0 
 						fi
 					else
-						dialog --title "Erro" --msgbox "Erro ao informar dados para copia. U:$bkp_usuario H:$bkp_host P:$bkp_path" 0 0 	
+						dialog --title "Erro" --msgbox "Erro ao informar dados para copia." 0 0 	
 					fi
 				else
 					dialog --title "Aviso" --msgbox "Erro ao efetuar o backup." 0 0
@@ -74,7 +74,7 @@ backup_menu(){
 		dia=$( dialog --stdout --title 'Informe o dia.' --inputbox 'Dia de agendamento' 0 0 )
 		mes=$( dialog --stdout --title 'Informe o mes.' --inputbox 'Mes de agendamento' 0 0 )
 		dow=$( dialog --stdout --title 'Informe o dia da semana.' --inputbox 'Dia da semana' 0 0 )
-		cmd="mysqldump -u root -proot -x -e -A > /root/backup_all_\`date \+\%Y\%m\%d\`.sql"
+		cmd="mysqldump -u root -proot -x -e -A > /root/backup_all_\`date \+\%Y\%m\%d\%H%M\`.sql"
 		echo "$minuto $hora $dia $mes $dow $cmd" > /tmp/cron.root
 		crontab -u root /tmp/cron.root 2> /tmp/cron.error
 		if [ $? = 0 ]
