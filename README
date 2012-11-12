@@ -2,7 +2,9 @@ Trabalho da Cadeira de Automacao (Unilasalle)
 
 To Do
 
-- Fazer loop para sempre ficar no menu principal ate que seja selecionada a opcao de sair ou cancelar
-- Fazer alteracao de usuario
+- Fazer loop para sempre ficar no menu principal ate que seja selecionada a opcao de sair ou cancelar (done)
+- Fazer alteracao de usuario (done)
+- Backup não pedir senha
+- Verificar integridade do backup
 
 Manipulacao do backup MySQL
